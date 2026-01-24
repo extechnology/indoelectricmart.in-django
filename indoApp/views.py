@@ -18,6 +18,7 @@ from indoApp.models import (
     ProductAttributeValue,
     BrandBrochure,
     HomeBanner,
+    LatestLaunches,
 )
 
 from indoApp.serializers import (
@@ -29,6 +30,7 @@ from indoApp.serializers import (
     ProductAttributeValueSerializer,
     BrandBrochureSerializer,
     HomeBannerSerializer,
+    LatestLaunchesSerializer,
 )
 
 
