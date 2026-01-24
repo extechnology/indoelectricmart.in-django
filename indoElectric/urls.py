@@ -42,6 +42,7 @@ router.register("category-attributes", CategoryAttributeViewSet, basename="categ
 router.register("product-attributes", ProductAttributeValueViewSet, basename="product-attributes")
 
 router.register("home-banner", HomeBannerViewSet, basename="home-banner")
+router.register("latest-launches", LatestLaunchesViewSet, basename="latest-launches")
 
 
 

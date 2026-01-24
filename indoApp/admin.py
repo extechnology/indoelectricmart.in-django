@@ -15,6 +15,7 @@ from indoApp.models import (
     ProductAttributeValue,
     BrandBrochure,
     HomeBanner,
+    LatestLaunches,
 )
 
 
@@ -304,4 +305,14 @@ class HomeBannerAdmin(admin.ModelAdmin):
     list_filter = ("banner_type", "is_active")
     search_fields = ("title", "description")
     ordering = ("banner_type", "sort_order", "-created_at")
+    list_editable = ("sort_order", "is_active")
+
+
+
+@admin.register(LatestLaunches)
+class LatestLaunchesAdmin(admin.ModelAdmin):
+    list_display = ("title", "is_active", "sort_order", "updated_at")
+    list_filter = ("is_active")
+    search_fields = ("title", "description")
+    ordering = ("sort_order", "-created_at")
     list_editable = ("sort_order", "is_active")

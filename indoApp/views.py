@@ -348,3 +348,8 @@ class SearchAPIView(APIView):
 class HomeBannerViewSet(viewsets.ModelViewSet):
     queryset = HomeBanner.objects.all()
     serializer_class = HomeBannerSerializer
+
+
+class LatestLaunchesViewSet(viewsets.ModelViewSet):
+    queryset = LatestLaunches.objects.all()
+    serializer_class = LatestLaunchesSerializer

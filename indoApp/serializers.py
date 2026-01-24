@@ -164,3 +164,9 @@ class HomeBannerSerializer(serializers.ModelSerializer):
     class Meta:
         model = HomeBanner
         fields = ["id", "banner_type", "image", "title", "description", "is_active"]
+
+
+class LatestLaunchesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LatestLaunches
+        fields = ["id", "image", "title", "description", "is_active"]

@@ -190,3 +190,22 @@ class HomeBanner(models.Model):
 
     def __str__(self):
         return f"{self.get_banner_type_display()} - {self.title}"
+
+
+
+class LatestLaunches(models.Model):
+    image = models.ImageField(upload_to="latest_launches/")
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at")
+        indexes = [
+            models.Index(fields=["is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title}"
