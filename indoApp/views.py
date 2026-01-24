@@ -17,6 +17,7 @@ from indoApp.models import (
     CategoryAttribute,
     ProductAttributeValue,
     BrandBrochure,
+    HomeBanner,
 )
 
 from indoApp.serializers import (
@@ -27,6 +28,7 @@ from indoApp.serializers import (
     CategoryAttributeSerializer,
     ProductAttributeValueSerializer,
     BrandBrochureSerializer,
+    HomeBannerSerializer,
 )
 
 
@@ -341,3 +343,8 @@ class SearchAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class HomeBannerViewSet(viewsets.ModelViewSet):
+    queryset = HomeBanner.objects.all()
+    serializer_class = HomeBannerSerializer

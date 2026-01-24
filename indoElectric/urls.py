@@ -30,6 +30,7 @@ from indoApp.views import (
     CategoryAttributeViewSet,
     ProductAttributeValueViewSet,
     SearchAPIView,
+    HomeBannerViewSet,
 )
 
 router = DefaultRouter()
@@ -39,6 +40,8 @@ router.register("products", ProductViewSet, basename="products")
 router.register("attributes", AttributeViewSet, basename="attributes")
 router.register("category-attributes", CategoryAttributeViewSet, basename="category-attributes")
 router.register("product-attributes", ProductAttributeValueViewSet, basename="product-attributes")
+
+router.register("home-banner", HomeBannerViewSet, basename="home-banner")
 
 
 

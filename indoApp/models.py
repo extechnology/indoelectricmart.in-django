@@ -155,3 +155,38 @@ class ProductAttributeValue(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.attribute.name}"
+
+
+
+
+
+class HomeBanner(models.Model):
+    class BannerType(models.TextChoices):
+        HERO_CAROUSEL = "HERO", "Hero Carousel"
+        EXCLUSIVE = "EXCLUSIVE", "Exclusive Banner"
+        TOP_BRANDS = "TOP_BRANDS", "Top Brands Banner"
+        OFFERS = "OFFERS", "Offers Banner"
+
+    banner_type = models.CharField(
+        max_length=20,
+        choices=BannerType.choices,
+        db_index=True,
+    )
+
+    image = models.ImageField(upload_to="home_banners/")
+    title = models.CharField(max_length=255, null=True, blank=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    sort_order = models.PositiveIntegerField(default=0)  # ✅ important
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("banner_type", "sort_order", "-created_at")
+        indexes = [
+            models.Index(fields=["banner_type", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_banner_type_display()} - {self.title}"

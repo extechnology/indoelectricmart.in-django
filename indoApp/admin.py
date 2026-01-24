@@ -4,7 +4,6 @@ from django.forms import BaseInlineFormSet
 from django.db.models import Q
 from django.utils.text import slugify
 from django.utils.html import format_html
-from django.http import JsonResponse
 from django.urls import path
 
 from indoApp.models import (
@@ -15,12 +14,8 @@ from indoApp.models import (
     CategoryAttribute,
     ProductAttributeValue,
     BrandBrochure,
+    HomeBanner,
 )
-
-
-# ======================================================
-# CATEGORY ADMIN FORM (Parent dropdown clean)
-# ======================================================
 
 
 
@@ -115,7 +110,6 @@ class CategoryAttributeInline(admin.TabularInline):
     extra = 1
     autocomplete_fields = ("attribute",)
     ordering = ("sort_order",)
-
 
 
 
@@ -301,3 +295,13 @@ class ProductAdmin(admin.ModelAdmin):
         if not obj.slug:
             obj.slug = slugify(obj.name)
         super().save_model(request, obj, form, change)
+
+
+
+@admin.register(HomeBanner)
+class HomeBannerAdmin(admin.ModelAdmin):
+    list_display = ("title", "banner_type", "is_active", "sort_order", "updated_at")
+    list_filter = ("banner_type", "is_active")
+    search_fields = ("title", "description")
+    ordering = ("banner_type", "sort_order", "-created_at")
+    list_editable = ("sort_order", "is_active")

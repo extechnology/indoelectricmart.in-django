@@ -158,3 +158,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
             "attributes",
         ]
+
+
+class HomeBannerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HomeBanner
+        fields = ["id", "banner_type", "image", "title", "description", "is_active"]
