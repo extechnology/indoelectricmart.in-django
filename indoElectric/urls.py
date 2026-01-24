@@ -31,6 +31,7 @@ from indoApp.views import (
     ProductAttributeValueViewSet,
     SearchAPIView,
     HomeBannerViewSet,
+    LatestLaunchesViewSet,
 )
 
 router = DefaultRouter()
