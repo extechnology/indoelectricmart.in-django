@@ -4,6 +4,8 @@ from django.forms import BaseInlineFormSet
 from django.db.models import Q
 from django.utils.text import slugify
 from django.utils.html import format_html
+from django.http import JsonResponse
+from django.urls import path
 
 from indoApp.models import (
     Category,
@@ -19,34 +21,106 @@ from indoApp.models import (
 # ======================================================
 # CATEGORY ADMIN FORM (Parent dropdown clean)
 # ======================================================
+
+
+
 class CategoryAdminForm(forms.ModelForm):
+    main_category = forms.ModelChoiceField(
+        queryset=Category.objects.filter(parent__isnull=True).order_by("name"),
+        required=False,
+        label="Main Category",
+        empty_label="--- Select Main Category ---",
+    )
+
+    sub_category = forms.ModelChoiceField(
+        queryset=Category.objects.none(),
+        required=False,
+        label="Sub Category",
+        empty_label="--- Select Sub Category ---",
+    )
+
     class Meta:
         model = Category
-        fields = "__all__"
+        fields = ["main_category", "sub_category", "name", "slug", "is_active"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if "parent" in self.fields:
-            # ✅ allow only valid parents:
-            # 1) root categories (main categories)
-            # 2) sub categories (categories that already have children)
-            # ❌ exclude leaf categories (sub names)
-            self.fields["parent"].queryset = Category.objects.filter(
-                Q(parent__isnull=True) | Q(children__isnull=False)
-            ).distinct()
+        main_id = None
 
-            # ✅ clearer parent labels
-            self.fields["parent"].label_from_instance = self.parent_label
+        # ✅ 1) If user selected main category (POST)
+        if "main_category" in self.data:
+            main_id = self.data.get("main_category")
 
-    def parent_label(self, obj: Category):
-        if obj.parent is None:
-            return f"{obj.name} (Main Category)"
-        return f"{obj.name} (Sub Category)"
+        # ✅ 2) If editing existing category
+        elif self.instance and self.instance.pk:
+            # Case: Sub Category (parent is a main category)
+            if self.instance.parent and self.instance.parent.parent is None:
+                main_id = self.instance.parent.id
+                self.fields["main_category"].initial = self.instance.parent
+
+            # Case: Sub Name (parent is sub category, parent.parent is main)
+            elif self.instance.parent and self.instance.parent.parent:
+                main_id = self.instance.parent.parent.id
+                self.fields["main_category"].initial = self.instance.parent.parent
+                self.fields["sub_category"].initial = self.instance.parent
+
+        # ✅ Load sub categories for selected main category
+        if main_id:
+            self.fields["sub_category"].queryset = Category.objects.filter(
+                parent_id=main_id
+            ).order_by("name")
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        main = cleaned_data.get("main_category")
+        sub = cleaned_data.get("sub_category")
+
+        # ✅ If sub selected, main must exist
+        if sub and not main:
+            raise forms.ValidationError(
+                "Please select Main Category before selecting Sub Category."
+            )
+
+        # ✅ If sub selected, it must belong to selected main
+        if main and sub and sub.parent_id != main.id:
+            raise forms.ValidationError(
+                "Selected Sub Category does not belong to the selected Main Category."
+            )
+
+        # ✅ Convert UI selection -> real DB parent
+        if sub:
+            cleaned_data["parent"] = sub
+        elif main:
+            cleaned_data["parent"] = main
+        else:
+            cleaned_data["parent"] = None
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+
+        # ✅ Final save parent logic
+        instance.parent = self.cleaned_data.get("parent")
+
+        if commit:
+            instance.save()
+        return instance
+
+
+class CategoryAttributeInline(admin.TabularInline):
+    model = CategoryAttribute
+    extra = 1
+    autocomplete_fields = ("attribute",)
+    ordering = ("sort_order",)
+
+
 
 
 # ======================================================
-# CATEGORY ATTRIBUTE INLINE (assign attributes to category)
+# Category Attribute Inline
 # ======================================================
 class CategoryAttributeInline(admin.TabularInline):
     model = CategoryAttribute
@@ -56,59 +130,68 @@ class CategoryAttributeInline(admin.TabularInline):
 
 
 # ======================================================
-# CATEGORY ADMIN
+# Parent Dropdown Label Field (ONLY for parent selection)
 # ======================================================
-@admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
-    form = CategoryAdminForm
-
-    list_display = ("name", "category_level", "parent", "children_count", "is_active")
-    list_filter = ("is_active", "parent")
-    search_fields = ("name", "slug", "parent__name")
-    prepopulated_fields = {"slug": ("name",)}
-    ordering = ("parent__name", "name")
-
-    # ✅ Parent should come first
-    fieldsets = (
-        ("Hierarchy", {"fields": ("parent",)}),
-        ("Category Info", {"fields": ("name", "slug")}),
-        ("Status", {"fields": ("is_active",)}),
-    )
-
-    # ✅ Assign allowed attributes per Category directly here
-    inlines = [CategoryAttributeInline]
-
-    def children_count(self, obj):
-        return obj.children.count()
-    children_count.short_description = "Children"
-
-    def category_level(self, obj):
-        if obj.parent is None:
-            return format_html("<b style='color:green;'>{}</b>", "Main Category")
-        if obj.children.exists():
-            return format_html("<b style='color:blue;'>{}</b>", "Sub Category")
-        return format_html("<b style='color:purple;'>{}</b>", "Sub Name")
-    category_level.short_description = "Type"
-
-
-
-
-class CategoryChoiceField(forms.ModelChoiceField):
+class ParentCategoryChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj: Category):
         # Main category
-        if obj.parent is None:
+        if obj.parent_id is None:
             return f"{obj.name} (Main Category)"
 
-        # Leaf category (no children)
-        if not obj.children.exists():
-            return f"{obj.name} (Sub Name)"
-
-        # Sub category (has parent + has children)
+        # Sub category
         return f"{obj.name} (Sub Category)"
 
 
+# ======================================================
+# Category Admin
+# ======================================================
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "category_level", "parent", "is_active", "children_count")
+    list_filter = ("is_active",)
+    search_fields = ("name", "slug", "parent__name")
+    ordering = ("parent__id", "name")
+    prepopulated_fields = {"slug": ("name",)}
+    inlines = [CategoryAttributeInline]
+
+    fieldsets = (
+        ("Category Info", {"fields": ("parent", "name", "slug")}),
+        ("Status", {"fields": ("is_active",)}),
+    )
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "parent":
+            kwargs["queryset"] = (
+                Category.objects.filter(
+                    Q(parent__isnull=True) | Q(parent__parent__isnull=True)
+                )
+                .distinct()
+            .order_by("parent__id", "name")
+        )
+        kwargs["form_class"] = ParentCategoryChoiceField
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def children_count(self, obj):
+        return obj.children.count()
+
+    children_count.short_description = "Children"
+
+    def category_level(self, obj):
+        if obj.parent_id is None:
+            return format_html("<b style='color:green;'>Main</b>")
+
+        if obj.parent and obj.parent.parent_id is None:
+            return format_html("<b style='color:blue;'>Sub</b>")
+
+        return format_html("<b style='color:purple;'>Sub Name</b>")
+
+    category_level.short_description = "Level"
+
+
+
 class BrandBrochureInlineForm(forms.ModelForm):
-    category = CategoryChoiceField(queryset=Category.objects.filter(is_active=True))
+    category = ParentCategoryChoiceField(queryset=Category.objects.filter(is_active=True))
 
     class Meta:
         model = BrandBrochure
@@ -188,16 +271,13 @@ class ProductAdminForm(forms.ModelForm):
 # ======================================================
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    form = ProductAdminForm
-
-    list_display = ("name", "category", "brand", "price", "stock", "is_active","is_exclusive")
-    list_filter = ("is_active", "category", "brand")
+    list_display = ("name", "category", "brand", "price", "stock", "is_active", "is_exclusive")
+    list_filter = ("is_active", "brand")
     search_fields = ("name", "slug", "category__name", "brand__name")
     ordering = ("-created_at",)
 
     autocomplete_fields = ("brand",)
     prepopulated_fields = {"slug": ("name",)}
-
     inlines = [ProductAttributeValueInline]
 
     fieldsets = (
@@ -206,6 +286,16 @@ class ProductAdmin(admin.ModelAdmin):
         ("Inventory", {"fields": ("stock", "is_active")}),
         ("Description", {"fields": ("description",)}),
     )
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """
+        ✅ Only allow Leaf categories to be selectable for Product.category.
+        Leaf = category that has NO children.
+        """
+        if db_field.name == "category":
+            kwargs["queryset"] = Category.objects.filter(children__isnull=True).order_by("name")
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def save_model(self, request, obj, form, change):
         if not obj.slug:
