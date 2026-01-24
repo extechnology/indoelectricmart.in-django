@@ -22,17 +22,7 @@ from django.conf.urls.static import static
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from indoApp.views import (
-    CategoryViewSet,
-    BrandViewSet,
-    ProductViewSet,
-    AttributeViewSet,
-    CategoryAttributeViewSet,
-    ProductAttributeValueViewSet,
-    SearchAPIView,
-    HomeBannerViewSet,
-    LatestLaunchesViewSet,
-)
+from indoApp.views import *
 
 router = DefaultRouter()
 router.register("categories", CategoryViewSet, basename="categories")

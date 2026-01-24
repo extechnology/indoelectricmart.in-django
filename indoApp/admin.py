@@ -311,8 +311,33 @@ class HomeBannerAdmin(admin.ModelAdmin):
 
 @admin.register(LatestLaunches)
 class LatestLaunchesAdmin(admin.ModelAdmin):
-    list_display = ("title", "is_active", "sort_order", "updated_at")
-    list_filter = ("is_active")
+    list_display = (
+        "title",
+        "is_active",
+        "created_at",
+        "updated_at",
+        "image_preview",
+    )
+    list_filter = ("is_active",)
     search_fields = ("title", "description")
-    ordering = ("sort_order", "-created_at")
-    list_editable = ("sort_order", "is_active")
+    ordering = ("-created_at",)
+
+    list_editable = ("is_active",)
+    readonly_fields = ("image_preview", "created_at", "updated_at")
+
+    fieldsets = (
+        ("Launch Info", {"fields": ("title", "description")}),
+        ("Image", {"fields": ("image", "image_preview")}),
+        ("Status", {"fields": ("is_active",)}),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
+
+    def image_preview(self, obj: LatestLaunches):
+        if obj.image:
+            return format_html(
+                "<img src='{}' style='height:60px;width:100px;object-fit:cover;border-radius:10px;' />",
+                obj.image.url,
+            )
+        return "—"
+
+    image_preview.short_description = "Preview"
