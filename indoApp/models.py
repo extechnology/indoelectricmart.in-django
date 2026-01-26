@@ -95,7 +95,7 @@ class Product(models.Model):
     is_featured = models.BooleanField(default=False)
 
     description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=12, decimal_places=2)
+    price = models.DecimalField(max_digits=12, decimal_places=2 , null=True, blank=True)
     old_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     stock = models.PositiveIntegerField(default=0)
