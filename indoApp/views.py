@@ -151,36 +151,14 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 
+from django.db.models import Q
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework import status
+
 class SearchAPIView(APIView):
-    """
-    Premium Search API for:
-    - products
-    - brands
-    - categories (MAIN/SUB/LEAF)
-
-    Returns suggestions grouped for dropdown UI.
-    MAIN/SUB categories include "leaf_slugs" so frontend can redirect to leaf-based filter pages.
-    """
-
     permission_classes = [AllowAny]
-
-    def get_leaf_descendants(self, category: Category):
-        """
-        Return all leaf categories under a category (including itself if it is leaf).
-        This works even if user searches MAIN or SUB.
-        """
-        # ✅ If already LEAF
-        if category.category_type == "LEAF":
-            return Category.objects.filter(id=category.id, is_active=True)
-
-        # ✅ Otherwise: collect leaf descendants
-        # This assumes you have parent relation as self FK
-        # (parent -> children reverse relation)
-        return Category.objects.filter(
-            is_active=True,
-            category_type="LEAF",
-            full_path__startswith=category.name  # fallback idea (optional)
-        )
 
     def get(self, request):
         q = request.GET.get("q", "").strip()
@@ -191,23 +169,16 @@ class SearchAPIView(APIView):
                     "query": "",
                     "products": [],
                     "brands": [],
-                    "categories": {
-                        "main": [],
-                        "sub": [],
-                        "leaf": [],
-                    },
+                    "categories": {"main": [], "sub": [], "leaf": []},
                 },
                 status=status.HTTP_200_OK,
             )
 
-        # ✅ Limits for dropdown suggestions (keep it fast)
         products_limit = int(request.GET.get("products_limit", 8))
         categories_limit = int(request.GET.get("categories_limit", 6))
         brands_limit = int(request.GET.get("brands_limit", 6))
 
-        # ==========================================================
-        # ✅ PRODUCTS SEARCH
-        # ==========================================================
+        # ✅ PRODUCTS
         product_qs = (
             Product.objects.select_related("category", "brand")
             .filter(is_active=True)
@@ -215,7 +186,7 @@ class SearchAPIView(APIView):
                 Q(name__icontains=q)
                 | Q(slug__icontains=q)
                 | Q(category__name__icontains=q)
-                | Q(category__full_path__icontains=q)
+                | Q(category__parent__name__icontains=q)
                 | Q(brand__name__icontains=q)
             )
             .order_by("-created_at")[:products_limit]
@@ -246,16 +217,14 @@ class SearchAPIView(APIView):
                         "id": p.category.id,
                         "name": p.category.name,
                         "slug": p.category.slug,
-                        "full_path": getattr(p.category, "full_path", None),
+                        "full_path": None,
                     }
                     if p.category
                     else None,
                 }
             )
 
-        # ==========================================================
-        # ✅ BRANDS SEARCH
-        # ==========================================================
+        # ✅ BRANDS
         brand_qs = (
             Brand.objects.filter(is_active=True)
             .filter(Q(name__icontains=q))
@@ -274,55 +243,75 @@ class SearchAPIView(APIView):
                 }
             )
 
-        # ==========================================================
-        # ✅ CATEGORIES SEARCH (MAIN / SUB / LEAF)
-        # ==========================================================
+        # ✅ CATEGORIES (NO category_type field)
         category_qs = (
             Category.objects.filter(is_active=True)
-            .filter(Q(name__icontains=q) | Q(slug__icontains=q) | Q(full_path__icontains=q))
-            .order_by("parent_id", "name")[: categories_limit * 2]
+            .filter(
+                Q(name__icontains=q)
+                | Q(slug__icontains=q)
+                | Q(parent__name__icontains=q)
+                | Q(parent__parent__name__icontains=q)
+            )
+            .select_related("parent", "parent__parent")
+            .order_by("parent_id", "name")[: categories_limit * 3]
         )
 
         main_categories = []
         sub_categories = []
         leaf_categories = []
 
-        for c in category_qs:
-            item = {
-                "id": c.id,
-                "name": c.name,
-                "slug": c.slug,
-                "category_type": c.category_type,
-                "full_path": getattr(c, "full_path", None),
-            }
+        def get_category_type(cat: Category):
+            if cat.parent is None:
+                return "MAIN"
+            if cat.parent and cat.parent.parent is None:
+                return "SUB"
+            return "LEAF"
 
-            # ✅ If MAIN or SUB → return leaf slugs for redirection
-            if c.category_type in ["MAIN", "SUB"]:
-                leafs = Category.objects.filter(
-                    is_active=True,
-                    category_type="LEAF",
-                    full_path__startswith=c.name  # optional fallback
-                )
+        def get_leaf_slugs_for(cat: Category):
+            ctype = get_category_type(cat)
 
-                # ✅ BEST WAY: get descendants properly (recommended)
-                # If your category model has children relation, use recursion OR adjacency query
-                # Here we handle it in a simple safe way:
-                leaf_slugs = list(
+            if ctype == "MAIN":
+                # MAIN -> SUB -> LEAF
+                return list(
                     Category.objects.filter(
                         is_active=True,
-                        category_type="LEAF",
-                        full_path__icontains=c.name,
+                        parent__parent=cat,
                     )
                     .values_list("slug", flat=True)
                     .distinct()[:12]
                 )
 
-                item["leaf_slugs"] = leaf_slugs
+            if ctype == "SUB":
+                # SUB -> LEAF
+                return list(
+                    Category.objects.filter(
+                        is_active=True,
+                        parent=cat,
+                    )
+                    .values_list("slug", flat=True)
+                    .distinct()[:12]
+                )
 
-            # ✅ Put into correct group
-            if c.category_type == "MAIN":
+            # LEAF
+            return [cat.slug]
+
+        for c in category_qs:
+            ctype = get_category_type(c)
+
+            item = {
+                "id": c.id,
+                "name": c.name,
+                "slug": c.slug,
+                "category_type": ctype,
+                "full_path": None,
+            }
+
+            if ctype in ["MAIN", "SUB"]:
+                item["leaf_slugs"] = get_leaf_slugs_for(c)
+
+            if ctype == "MAIN":
                 main_categories.append(item)
-            elif c.category_type == "SUB":
+            elif ctype == "SUB":
                 sub_categories.append(item)
             else:
                 leaf_categories.append(item)
