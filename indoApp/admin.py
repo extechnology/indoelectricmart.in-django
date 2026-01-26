@@ -301,11 +301,30 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(HomeBanner)
 class HomeBannerAdmin(admin.ModelAdmin):
-    list_display = ("title", "banner_type", "is_active", "sort_order", "updated_at")
+    list_display = (
+        "title",
+        "banner_type",
+        "banner_preview",
+        "is_active",
+        "sort_order",
+        "updated_at",
+    )
     list_filter = ("banner_type", "is_active")
     search_fields = ("title", "description")
     ordering = ("banner_type", "sort_order", "-created_at")
     list_editable = ("sort_order", "is_active")
+
+
+    def banner_preview(self, obj):
+        if obj.image: # ✅ replace "image" with your ImageField name
+            return format_html(
+                '<img src="{}" style="width:80px; height:50px; object-fit:cover; border-radius:6px;" />',
+                obj.image.url,
+            )
+        return "No Image"
+
+
+    banner_preview.short_description = "Preview"
 
 
 
