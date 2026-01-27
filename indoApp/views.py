@@ -9,29 +9,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework import generics
 
 
-from indoApp.models import (
-    Category,
-    Brand,
-    Product,
-    Attribute,
-    CategoryAttribute,
-    ProductAttributeValue,
-    BrandBrochure,
-    HomeBanner,
-    LatestLaunches,
-)
+from indoApp.models import *
 
-from indoApp.serializers import (
-    CategorySerializer,
-    BrandSerializer,
-    ProductSerializer,
-    AttributeSerializer,
-    CategoryAttributeSerializer,
-    ProductAttributeValueSerializer,
-    BrandBrochureSerializer,
-    HomeBannerSerializer,
-    LatestLaunchesSerializer,
-)
+from indoApp.serializers import *
 
 
 # ============================
@@ -344,3 +324,8 @@ class HomeBannerViewSet(viewsets.ModelViewSet):
 class LatestLaunchesViewSet(viewsets.ModelViewSet):
     queryset = LatestLaunches.objects.all()
     serializer_class = LatestLaunchesSerializer
+
+
+class OffersAndSchemesViewSet(viewsets.ModelViewSet):
+    queryset = OffersAndSchemes.objects.all()
+    serializer_class = OffersAndSchemesSerializer

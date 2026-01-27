@@ -6,18 +6,7 @@ from django.utils.text import slugify
 from django.utils.html import format_html
 from django.urls import path
 
-from indoApp.models import (
-    Category,
-    Brand,
-    Product,
-    Attribute,
-    CategoryAttribute,
-    ProductAttributeValue,
-    BrandBrochure,
-    HomeBanner,
-    LatestLaunches,
-)
-
+from indoApp.models import *
 
 
 class CategoryAdminForm(forms.ModelForm):
@@ -346,6 +335,42 @@ class LatestLaunchesAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("Launch Info", {"fields": ("title", "description")}),
+        ("Image", {"fields": ("image", "image_preview")}),
+        ("Status", {"fields": ("is_active",)}),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
+
+    def image_preview(self, obj: LatestLaunches):
+        if obj.image:
+            return format_html(
+                "<img src='{}' style='height:60px;width:100px;object-fit:cover;border-radius:10px;' />",
+                obj.image.url,
+            )
+        return "—"
+
+    image_preview.short_description = "Preview"
+
+
+
+@admin.register(OffersAndSchemes)
+class OffersAndSchemesAdmin(admin.ModelAdmin):
+    list_display = (
+        "title",
+        "is_active",
+        "valid_upto",
+        "created_at",
+        "updated_at",
+        "image_preview",
+    )
+    list_filter = ("is_active",)
+    search_fields = ("title", "description")
+    ordering = ("-created_at",)
+
+    list_editable = ("is_active",)
+    readonly_fields = ("image_preview", "created_at", "updated_at")
+
+    fieldsets = (
+        ("Launch Info", {"fields": ("title", "description","valid_upto")}),
         ("Image", {"fields": ("image", "image_preview")}),
         ("Status", {"fields": ("is_active",)}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),

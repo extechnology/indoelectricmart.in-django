@@ -170,3 +170,9 @@ class LatestLaunchesSerializer(serializers.ModelSerializer):
     class Meta:
         model = LatestLaunches
         fields = ["id", "image", "title", "description", "is_active"]
+
+
+class OffersAndSchemesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OffersAndSchemes
+        fields = ["id", "image", "title", "description", "valid_upto", "is_active"]

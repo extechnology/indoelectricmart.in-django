@@ -209,3 +209,23 @@ class LatestLaunches(models.Model):
 
     def __str__(self):
         return f"{self.title}"
+
+
+
+class OffersAndSchemes(models.Model):
+    image = models.ImageField(upload_to="offers_and_schemes/")
+    title = models.CharField(max_length=255,null=True,blank=True)
+    description = models.TextField(blank=True)
+    valid_upto = models.DateField(null=True,blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title}"
