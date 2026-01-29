@@ -90,7 +90,7 @@ class Product(models.Model):
     slug = models.SlugField(max_length=300, unique=True)
     image = models.ImageField(upload_to="products/", null=True, blank=True)
     rating = models.IntegerField(default=5)
-    min_order_quantity = models.PositiveIntegerField(default=1)
+    min_order_quantity = models.CharField(max_length=255,null=True,blank=True)
     is_exclusive = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
 
