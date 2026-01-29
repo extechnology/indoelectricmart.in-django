@@ -166,6 +166,10 @@ class HomeBanner(models.Model):
         EXCLUSIVE = "EXCLUSIVE", "Exclusive Banner"
         TOP_BRANDS = "TOP_BRANDS", "Top Brands Banner"
         OFFERS = "OFFERS", "Offers Banner"
+        HERO_CAROUSEL_MOBILE = "HERO_MOBILE", "Hero Carousel Mobile"
+        EXCLUSIVE_MOBILE = "EXCLUSIVE_MOBILE", "Exclusive Banner Mobile"
+        TOP_BRANDS_MOBILE = "TOP_BRANDS_MOBILE", "Top Brands Banner Mobile"
+        OFFERS_MOBILE = "OFFERS_MOBILE", "Offers Banner Mobile"
 
     banner_type = models.CharField(
         max_length=20,
